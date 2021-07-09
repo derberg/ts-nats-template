@@ -1,20 +1,28 @@
-import { pascalCase, camelCase, getMessageType, realizeParametersForChannelWrapper, getClientToUse, realizeParametersForChannelWithoutType} from '../../utils/index';
+import { pascalCase, camelCase, getMessageType, realizeParametersForChannelWrapper, getClientToUse, realizeParametersForChannelWithoutType, renderJSDocParameters} from '../../utils/index';
+// eslint-disable-next-line no-unused-vars
+import { Message, ChannelParameter } from '@asyncapi/parser';
 
 /**
  * Component which returns a subscribe to function for the client
  * 
- * @param {*} defaultContentType 
- * @param {*} channelName to publish to
- * @param {*} message received
- * @param {*} messageDescription 
- * @param {*} channelParameters parameters to the channel 
+ * @param {string} defaultContentType 
+ * @param {string} channelName to publish to
+ * @param {Message} message which is being received
+ * @param {string} messageDescription 
+ * @param {Object.<string, ChannelParameter>} channelParameters parameters to the channel
  */
 export function Subscribe(defaultContentType, channelName, message, messageDescription, channelParameters) {
   return  `
   /**
-  *  ${messageDescription}
-  * @param onDataCallback Called when message received.
-  */
+    * Subscribe to the \`${channelName}\`
+    * 
+    * ${messageDescription}
+    * 
+    * @param onDataCallback to call when messages are received
+    ${renderJSDocParameters(channelParameters)}
+    * @param flush ensure client is force flushed after subscribing
+    * @param options to subscribe with, bindings from the AsyncAPI document overwrite these if specified
+    */
   public subscribeTo${pascalCase(channelName)}(
       onDataCallback : (
         err?: NatsTypescriptTemplateError, 

@@ -1,18 +1,18 @@
 import { OnReceivingData } from './OnReceivingData';
-import { realizeChannelName, camelCase, getMessageType, includeUnsubAfterForSubscription, messageHasNotNullPayload, realizeParametersForChannelWrapper, includeQueueForSubscription} from '../../utils/index';
+import { realizeChannelName, camelCase, getMessageType, includeUnsubAfterForSubscription, messageHasNotNullPayload, realizeParametersForChannelWrapper, includeQueueForSubscription, renderJSDocParameters} from '../../utils/index';
 import { unwrap } from './ChannelParameterUnwrap';
+// eslint-disable-next-line no-unused-vars
+import { Message, ChannelParameter } from '@asyncapi/parser';
 
 /**
  * Component which returns a function which subscribes to the given channel
  * 
- * @param {*} defaultContentType 
- * @param {*} channelName to subscribe to
- * @param {*} message which is being received
- * @param {*} channelParameters parameters to the channel
+ * @param {string} defaultContentType 
+ * @param {string} channelName to subscribe to
+ * @param {Message} message which is being received
+ * @param {Object.<string, ChannelParameter>} channelParameters parameters to the channel
  */
-export function Subscribe(defaultContentType, channelName, message, channelParameters) {
-
-  //Create an array of all the parameter names
+export function Subscribe(defaultContentType, channelName, message, channelParameters, operation) {
   let parameters = [];
   parameters = Object.entries(channelParameters).map(([parameterName]) => {
     return `${camelCase(parameterName)}Param`;
@@ -35,22 +35,31 @@ export function Subscribe(defaultContentType, channelName, message, channelParam
   }
   
   return `
+  
+  /**
+   * Internal functionality to setup subscription on the \`${channelName}\` channel 
+   * 
+   * @param onDataCallback to call when messages are received
+   * @param client to subscribe with
+   ${renderJSDocParameters(channelParameters)}
+   * @param options to subscribe with, bindings from the AsyncAPI document overwrite these if specified
+   */
     export function subscribe(
       onDataCallback : (
         err?: NatsTypescriptTemplateError, 
         msg?: ${getMessageType(message)}
         ${realizeParametersForChannelWrapper(channelParameters, false)}) => void, 
-      nc: Client
+      client: Client
       ${realizeParametersForChannelWrapper(channelParameters)},
       options?: SubscriptionOptions
     ): Promise<Subscription> {
     return new Promise(async (resolve, reject) => {
       let subscribeOptions: SubscriptionOptions = {... options};
-      ${includeQueueForSubscription(message)}
-      ${includeUnsubAfterForSubscription(message)}
+      ${includeQueueForSubscription(operation)}
+      ${includeUnsubAfterForSubscription(operation)}
 
       try{
-        let subscription = await nc.subscribe(${realizeChannelName(channelParameters, channelName)}, (err, msg) => {
+        let subscription = await client.subscribe(${realizeChannelName(channelParameters, channelName)}, (err, msg) => {
           if(err){
             onDataCallback(NatsTypescriptTemplateError.errorForCode(ErrorCode.INTERNAL_NATS_TS_ERROR, err));
           }else{

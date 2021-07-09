@@ -1,28 +1,37 @@
 import { OnSendingData } from './OnSendingData';
-import { realizeChannelName, getMessageType, realizeParametersForChannelWrapper, messageHasNotNullPayload } from '../../utils/index';
+import { realizeChannelName, getMessageType, realizeParametersForChannelWrapper, messageHasNotNullPayload, renderJSDocParameters } from '../../utils/index';
+// eslint-disable-next-line no-unused-vars
+import { Message, ChannelParameter } from '@asyncapi/parser';
 
 /**
- * Component which returns a function which subscribes to the given channel
+ * Component which returns a function which publishes to the given channel
  * 
- * @param {*} defaultContentType 
- * @param {*} channelName to publish to
- * @param {*} message which is being published
- * @param {*} channelParameters parameters to the channel
+ * @param {string} defaultContentType 
+ * @param {string} channelName to publish to
+ * @param {Message} message which is being published
+ * @param {Object.<string, ChannelParameter>} channelParameters parameters to the channel
  */
 export function Publish(defaultContentType, channelName, message, channelParameters) {
-
   //Determine the publish operation based on whether the message type is null
-  let publishOperation = `await nc.publish(${realizeChannelName(channelParameters, channelName)}, null);`
-  if(messageHasNotNullPayload(message.payload())){
+  let publishOperation = `await nc.publish(${realizeChannelName(channelParameters, channelName)}, null);`;
+  if (messageHasNotNullPayload(message.payload())) {
     publishOperation = `
       ${OnSendingData(message, defaultContentType)}
-      await nc.publish(${realizeChannelName(channelParameters, channelName)}, dataToSend);
+      await client.publish(${realizeChannelName(channelParameters, channelName)}, dataToSend);
     `;
   }
   return `
+  /**
+   * Internal functionality to publish message to channel 
+   * ${channelName}
+   * 
+   * @param message to publish
+   * @param client to publish with
+   ${renderJSDocParameters(channelParameters)}
+   */
     export function publish(
       message: ${getMessageType(message)},
-      nc: Client
+      client: Client
       ${realizeParametersForChannelWrapper(channelParameters)}
       ): Promise<void> {
       return new Promise<void>(async (resolve, reject) => {

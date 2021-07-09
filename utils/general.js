@@ -1,15 +1,27 @@
 import _ from 'lodash';
+import {FormatHelpers} from '@asyncapi/modelina';
+// eslint-disable-next-line no-unused-vars
+import { Message, Schema, AsyncAPIDocument} from '@asyncapi/parser';
+const contentTypeJSON = 'application/json';
+const contentTypeString = 'text/plain';
+const contentTypeBinary = 'application/octet-stream';
 
 /**
- * Should the callbacks be promisified.
+ * @typedef TemplateParameters
+ * @type {object}
+ * @property {boolean} generateTestClient - whether or not test client should be generated.
+ * @property {boolean} promisifyReplyCallback - whether or not reply callbacks should be promisify.
+ */
+
+/**
+ * Should the callbacks be promisify.
  * 
- * @param {*} params passed to the template
+ * @param {TemplateParameters} params passed to the template
  * @returns {boolean} should it promisify callbacks
  */
 export function shouldPromisifyCallbacks(params) {
   return params.promisifyReplyCallback;
 }
-
 
 export function camelCase(string) {
   return _.camelCase(string);
@@ -23,11 +35,21 @@ export function kebabCase(string) {
 }
 
 /**
+ * Returns the schema file name
+ * 
+ * @param {string} schemaName 
+ * @returns 
+ */
+export function getSchemaFileName(schemaName) {
+  return FormatHelpers.toPascalCase(schemaName);
+}
+
+/**
  * Figure out if our message content type or default content type matches a given payload.
  * 
- * @param {*} messageContentType to check
- * @param {*} defaultContentType to check
- * @param {*} payload to find
+ * @param {string} messageContentType to check against payload
+ * @param {string} defaultContentType to check against payload
+ * @param {string} payload to check
  */
 function containsPayload(messageContentType, defaultContentType, payload) {
   if (
@@ -40,29 +62,27 @@ function containsPayload(messageContentType, defaultContentType, payload) {
   return false;
 }
 export function isBinaryPayload (messageContentType, defaultContentType) {
-  return containsPayload(messageContentType, defaultContentType, 'binary');
+  return containsPayload(messageContentType, defaultContentType, contentTypeBinary);
 }
 export function isStringPayload(messageContentType, defaultContentType) {
-  return containsPayload(messageContentType, defaultContentType, 'string');
+  return containsPayload(messageContentType, defaultContentType, contentTypeString);
 }
 export function isJsonPayload(messageContentType, defaultContentType) {
-  return containsPayload(messageContentType, defaultContentType, 'json');
+  return containsPayload(messageContentType, defaultContentType, contentTypeJSON);
 }
 
 /**
  * Based on the payload type of the message choose a client
  * 
- * @param {*} message 
- * @param {*} defaultContentType 
+ * @param {Message} message 
+ * @param {string} defaultContentType 
  */
 export function getClientToUse(message, defaultContentType) {
   if (isBinaryPayload(message.contentType(), defaultContentType)) {
     return 'const nc: Client = this.binaryClient!;';
   } else if (isStringPayload(message.contentType(), defaultContentType)) {
     return 'const nc: Client = this.stringClient!;';
-  } else if (isJsonPayload(message.contentType(), defaultContentType)) {
-    return 'const nc: Client = this.jsonClient!;';
-  } 
+  }
   //Default to JSON client
   return 'const nc: Client = this.jsonClient!;';
 }
@@ -70,7 +90,7 @@ export function getClientToUse(message, defaultContentType) {
 /**
  * Checks if the message payload is of type null
  * 
- * @param {*} messagePayload to check
+ * @param {Schema} messagePayload to check
  * @returns {boolean} does the payload contain null type 
  */
 export function messageHasNotNullPayload(messagePayload) {
@@ -78,26 +98,26 @@ export function messageHasNotNullPayload(messagePayload) {
 }
 
 /**
- * Because quicktype cant handle null types we have to ensure that the correct message type is returned.
+ * Get message type ensure that the correct message type is returned.
  * 
- * @param {*} message to find the message type for
+ * @param {Message} message to find the message type for
  */
 export function getMessageType(message) {
   if (`${message.payload().type()}` === 'null') {
     return 'null';
   }
-  return `${pascalCase(message.uid())}Message.${pascalCase(message.uid())}`;
+  return `${getSchemaFileName(message.payload().uid())}`;
 }
 
 /**
  * Figure out if a content type is located in the document.
  * 
- * @param {*} document to look through
- * @param {*} payload to find
+ * @param {AsyncAPIDocument} document to look through
+ * @param {string} payload to find
  */
 function containsPayloadInDocument(document, payload) {
   if (
-    document.defaultContentType() !== undefined &&
+    document.hasDefaultContentType() &&
     document.defaultContentType().toLowerCase() === payload
   ) {
     return true;
@@ -137,20 +157,22 @@ function containsPayloadInDocument(document, payload) {
   return false;
 }
 export function containsBinaryPayload(document) {
-  return containsPayloadInDocument(document, 'binary');
+  return containsPayloadInDocument(document, contentTypeBinary);
 }
 export function containsStringPayload(document) {
-  return containsPayloadInDocument(document, 'string');
+  return containsPayloadInDocument(document, contentTypeString);
 }
 export function containsJsonPayload(document) {
-  return containsPayloadInDocument(document, 'json');
+  const containsJsonPayload = containsPayloadInDocument(document, contentTypeJSON);
+  //Default to JSON type
+  return containsJsonPayload || (!containsBinaryPayload(document) && !containsStringPayload(document));
 }
 
 /**
  * Convert JSON schema draft 7 types to typescript types 
  * 
- * @param {*} jsonSchemaType 
- * @param {*} property 
+ * @param {string} jsonSchemaType 
+ * @param {string} property 
  */
 export function toTsType(jsonSchemaType, property) {
   switch (jsonSchemaType.toLowerCase()) {
@@ -174,8 +196,8 @@ export function toTsType(jsonSchemaType, property) {
 /**
  * Cast JSON schema variable to typescript type
  * 
- * @param {*} jsonSchemaType 
- * @param {*} variableToCast 
+ * @param {string} jsonSchemaType 
+ * @param {string} variableToCast 
  */
 export function castToTsType(jsonSchemaType, variableToCast) {
   switch (jsonSchemaType.toLowerCase()) {
@@ -186,6 +208,6 @@ export function castToTsType(jsonSchemaType, variableToCast) {
     return `Number(${variableToCast})`;
   case 'boolean':
     return `Boolean(${variableToCast})`;
-  default: throw new Error(`Parameter type not supported - ${  jsonSchemaType}`);
+  default: throw new Error(`Parameter type not supported - ${jsonSchemaType}`);
   }
 }

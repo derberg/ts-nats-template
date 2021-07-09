@@ -1,13 +1,14 @@
-
+// eslint-disable-next-line no-unused-vars
+import { Operation, Channel } from '@asyncapi/parser';
 
 /**
  * Wrapper to include subscriptions option code if specified in the spec.
  * 
- * @param {*} message to check for queue bindings on 
+ * @param {Operation} operation to check for queue bindings on 
  */
-export function includeUnsubAfterForSubscription(message) {
-  if (message.hasBinding('nats') && message.bindings().nats.unsubAfter) {
-    return `subscribeOptions.max = '${message.binding('nats').unsubAfter}';`;
+export function includeUnsubAfterForSubscription(operation) {
+  if (operation !== undefined && operation.hasBinding('nats') && operation.binding('nats').unsubAfter) {
+    return `subscribeOptions.max = '${operation.binding('nats').unsubAfter}';`;
   }
   return '';
 }
@@ -15,17 +16,20 @@ export function includeUnsubAfterForSubscription(message) {
 /**
  * Wrapper to include subscriptions queue option if specified in the spec.
  * 
- * @param {*} message to check for queue bindings on 
+ * @param {*} obj to check for queue bindings on 
  */
-export function includeQueueForSubscription(message) {
-  if (message.hasBinding('nats') && message.binding('nats').queue) {
-    return `subscribeOptions.queue = '${message.binding('nats').queue}';`;
+export function includeQueueForSubscription(operation) {
+  if (operation !== undefined && operation.hasBinding('nats') && operation.binding('nats').queue) {
+    return `subscribeOptions.queue = '${operation.binding('nats').queue}';`;
   }
   return '';
 }
 
 /**
  * Is the channel a publish and subscribe. This is the default type if none is defined.
+ * 
+ * @param {Channel} channel 
+ * @returns {boolean}
  */
 export function isPubsub(channel) {
   if (!channel.hasBinding('nats') ||
@@ -38,6 +42,9 @@ export function isPubsub(channel) {
   
 /**
  * Is the channel a request and reply.
+ * 
+ * @param {Channel} channel 
+ * @returns {boolean}
  */
 export function isRequestReply(channel) {
   if (channel.hasBinding('nats') &&
@@ -50,6 +57,9 @@ export function isRequestReply(channel) {
   
 /**
  * Is the request reply a requester
+ * 
+ * @param {Channel} channel 
+ * @returns {boolean}
  */
 export function isRequester(channel) {
   if (isRequestReply(channel) &&
@@ -62,6 +72,9 @@ export function isRequester(channel) {
   
 /**
  * Is the request reply a replier
+ * 
+ * @param {Channel} channel 
+ * @returns {boolean}
  */
 export function isReplier(channel) {
   if (isRequestReply(channel) &&

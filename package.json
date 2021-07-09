@@ -1,6 +1,6 @@
 {
 	"name": "@asyncapi/ts-nats-template",
-	"version": "0.2.0",
+	"version": "0.3.54",
 	"description": "NATS TypeScript/Node.js template for the AsyncAPI generator.",
 	"keywords": [
 		"asyncapi",
@@ -24,7 +24,8 @@
 		"generate:examples:pubSub": "cd \"examples/publish subscribe\" && sh GenerateAndBuild.sh",
 		"generate:examples:requestReply": "cd \"examples/request reply\" && sh GenerateAndBuild.sh",
 		"release": "semantic-release",
-		"lint": "echo \"No linter yet\"",
+		"lint": "./node_modules/.bin/eslint --max-warnings 0 --config .eslintrc .",
+		"lint:fix": "./node_modules/.bin/eslint --max-warnings 0 --config .eslintrc . --fix",
 		"test": "echo \"No tests specified yet\"",
 		"test:examples:integration": "npm run test:examples:integration:pubSub && npm run test:examples:integration:requestReply",
 		"test:examples:integration:pubSub": "cd \"examples/publish subscribe\" && sh ./Test.sh",
@@ -33,20 +34,21 @@
 		"bump:version": "npm --no-git-tag-version --allow-same-version version $VERSION"
 	},
 	"dependencies": {
-		"@asyncapi/generator-filters": "^1.1.0",
-		"@asyncapi/generator-react-sdk": "^0.1.1",
-		"@lagoni/asyncapi-quicktype-filter": "^1.2.3",
+		"@asyncapi/generator-filters": "^2.0.0",
+		"@asyncapi/generator-react-sdk": "^0.2.11",
+		"@asyncapi/modelina": "^0.22.0",
+		"@asyncapi/parser": "^1.7.0",
 		"cross-env": "^7.0.2",
 		"filenamify": "^4.1.0",
 		"is-url": "1.2.4",
-		"lodash": "^4.17.20",
-		"quicktype-core": "6.0.66"
+		"js-beautify": "^1.13.5",
+		"lodash": "^4.17.20"
 	},
 	"publishConfig": {
 		"access": "public"
 	},
 	"devDependencies": {
-		"@asyncapi/generator": "^1.1.5",
+		"@asyncapi/generator": "^1.8.0",
 		"@semantic-release/commit-analyzer": "^8.0.1",
 		"@semantic-release/github": "^7.0.4",
 		"@semantic-release/npm": "^7.0.3",
@@ -57,6 +59,7 @@
 		"eslint-plugin-react": "^7.22.0",
 		"eslint-plugin-security": "^1.4.0",
 		"eslint-plugin-sonarjs": "^0.5.0",
+		"rimraf": "^3.0.2",
 		"semantic-release": "^17.0.4"
 	},
 	"release": {

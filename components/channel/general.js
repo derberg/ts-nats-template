@@ -1,19 +1,27 @@
 
-import { messageHasNotNullPayload, pascalCase } from '../../utils/index';
+import { messageHasNotNullPayload, getSchemaFileName } from '../../utils/index';
+// eslint-disable-next-line no-unused-vars
+import { Message, Channel} from '@asyncapi/parser';
 
-export function General( channel, publishMessage, subscribeMessage, path){
-  // Import the correct messages
+/**
+ * Component which includes all the general imports used for the channel
+ * 
+ * @param {Channel} channel used to check if message should be imported
+ * @param {Message} publishMessage to import 
+ * @param {Message} subscribeMessage to import 
+ * @param {string} path to where schemas are located
+ */
+export function General(channel, publishMessage, subscribeMessage, path) {
   let publishMessageImport = '';
-  if(channel.hasPublish() && messageHasNotNullPayload(publishMessage.payload())){
-    const publishMessageUid = publishMessage.uid();
-    publishMessageImport = `import * as ${pascalCase(publishMessageUid)}Message from '${path}/messages/${pascalCase(publishMessageUid)}'`
+  if (channel.hasPublish() && messageHasNotNullPayload(publishMessage.payload())) {
+    const publishMessageUid = getSchemaFileName(publishMessage.payload().uid());
+    publishMessageImport = `import {${publishMessageUid}} from '${path}/schemas/${publishMessageUid}';`;
   }
   let subscribeMessageImport = '';
-  if(channel.hasSubscribe() && messageHasNotNullPayload(subscribeMessage.payload())){
-    const subscribeMessageUid = subscribeMessage.uid();
-    subscribeMessageImport = `import * as ${pascalCase(subscribeMessageUid)}Message from '${path}/messages/${pascalCase(subscribeMessageUid)}'`
+  if (channel.hasSubscribe() && messageHasNotNullPayload(subscribeMessage.payload())) {
+    const subscribeMessageUid = getSchemaFileName(subscribeMessage.payload().uid());
+    subscribeMessageImport = `import {${subscribeMessageUid}} from '${path}/schemas/${subscribeMessageUid}';`;
   }
-
   return `
 ${publishMessageImport}
 ${subscribeMessageImport}
@@ -21,6 +29,5 @@ ${subscribeMessageImport}
 import { Client, NatsError, Subscription, SubscriptionOptions, Payload } from 'ts-nats';
 import {ErrorCode, NatsTypescriptTemplateError} from '${path}/NatsTypescriptTemplateError';
 import { Hooks } from '${path}/hooks';
-
-  `
+  `;
 }

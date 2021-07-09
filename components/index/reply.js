@@ -1,21 +1,37 @@
-import { pascalCase, camelCase, getMessageType, realizeParametersForChannelWithoutType, realizeParametersForChannelWrapper, getClientToUse} from '../../utils/index';
+import { pascalCase, camelCase, getMessageType, realizeParametersForChannelWithoutType, realizeParametersForChannelWrapper, getClientToUse, renderJSDocParameters} from '../../utils/index';
+// eslint-disable-next-line no-unused-vars
+import { Message, ChannelParameter } from '@asyncapi/parser';
+
+/**
+ * @typedef TemplateParameters
+ * @type {object}
+ * @property {boolean} generateTestClient - whether or not test client should be generated.
+ * @property {boolean} promisifyReplyCallback - whether or not reply callbacks should be promisify.
+ */
+
 /**
  * Component which returns a reply to function for the client
  * 
- * @param {*} defaultContentType 
- * @param {*} channelName to setup reply to
- * @param {*} replyMessage which is being received
- * @param {*} receiveMessage which is to be returned 
- * @param {*} messageDescription 
- * @param {*} channelParameters parameters to the channel
- * @param {*} params passed template parameters 
+ * @param {string} defaultContentType 
+ * @param {string} channelName to setup reply to
+ * @param {Message} replyMessage used to reply to request
+ * @param {Message} receiveMessage which is received by the request 
+ * @param {string} messageDescription 
+ * @param {Object.<string, ChannelParameter>} channelParameters parameters to the channel
+ * @param {TemplateParameters} params passed template parameters 
  */
 export function Reply(defaultContentType, channelName, replyMessage, receiveMessage, messageDescription, channelParameters, params) {
   return `
   /**
-   *  ${messageDescription}
-   * @param onRequest Called when request received.
-   * @param onReplyError Called when it was not possible to send the reply.
+   * Reply to the \`${channelName}\` channel 
+   * 
+   * ${messageDescription}
+   * 
+   * @param onRequest called when request is received
+   * @param onReplyError called when it was not possible to send the reply
+   ${renderJSDocParameters(channelParameters)}
+   * @param flush ensure client is force flushed after subscribing
+   * @param options to subscribe with, bindings from the AsyncAPI document overwrite these if specified
    */
     public replyTo${pascalCase(channelName)}(
         onRequest : (

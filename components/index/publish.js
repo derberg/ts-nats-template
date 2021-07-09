@@ -1,29 +1,35 @@
-import { pascalCase, camelCase, getMessageType, realizeParametersForChannelWrapper, realizeParametersForChannelWithoutType, getClientToUse } from '../../utils/index';
+import { pascalCase, camelCase, getMessageType, realizeParametersForChannelWrapper, realizeParametersForChannelWithoutType, getClientToUse, renderJSDocParameters } from '../../utils/index';
+// eslint-disable-next-line no-unused-vars
+import { Message, ChannelParameter } from '@asyncapi/parser';
 
 /**
  * Component which returns a publish to function for the client
  * 
- * @param {*} defaultContentType 
- * @param {*} channelName to publish to
- * @param {*} message to publish
- * @param {*} messageDescription 
- * @param {*} channelParameters parameters to the channel
+ * @param {string} defaultContentType 
+ * @param {string} channelName to publish to
+ * @param {Message} message which is being published
+ * @param {string} messageDescription 
+ * @param {Object.<string, ChannelParameter>} channelParameters parameters to the channel
  */
 export function Publish(defaultContentType, channelName, message, messageDescription, channelParameters) {
   return `
-    /**
-    *  ${messageDescription}
-    * @param requestMessage The message to publish.
-    */
+  /**
+   * Publish to the \`${channelName}\` channel 
+   * 
+   * ${messageDescription}
+   * 
+   * @param message to publish
+   ${renderJSDocParameters(channelParameters)}
+   */
     public publishTo${pascalCase(channelName)}(
-      requestMessage: ${getMessageType(message)} 
+      message: ${getMessageType(message)} 
       ${realizeParametersForChannelWrapper(channelParameters)}
     ): Promise<void> {
       ${getClientToUse(message, defaultContentType)}
 
       if(nc) {
         return ${camelCase(channelName)}Channel.publish(
-          requestMessage, 
+          message, 
           nc
           ${Object.keys(channelParameters).length ? `,${realizeParametersForChannelWithoutType(channelParameters)}` : ''}
         );

@@ -1,39 +1,49 @@
 
-import { isBinaryPayload, pascalCase, isStringPayload } from '../../utils/index';
+import { isBinaryPayload, isStringPayload, isJsonPayload} from '../../utils/index';
+// eslint-disable-next-line no-unused-vars
+import { Message } from '@asyncapi/parser';
 
 /**
  * Component which ensures the hooks are called after receiving data.
  * 
- * @param {*} message which is being received
- * @param {*} defaultContentType 
+ * @param {Message} message which is being received
+ * @param {string} defaultContentType 
  */
 export function OnReceivingData(message, defaultContentType) {
   //Check if we are converting from binary
-  let convertToBinary = '';
+  let convertFromBinary;
   if (isBinaryPayload(message.contentType(), defaultContentType)) {
-    convertToBinary = `
+    convertFromBinary = `
     if(receivedDataHooks.length == 0){
-      receivedData = ${pascalCase(message.uid())}Message.Convert.to${pascalCase(message.uid())}(receivedData.toString());
+      receivedData = JSON.parse(receivedData.toString());
     }`;
   }
 
   //Check if we are converting from string
-  let convertToString = '';
+  let convertFromString;
   if (isStringPayload(message.contentType(), defaultContentType)) {
-    convertToString = `
+    convertFromString = `
     if(receivedDataHooks.length == 0){
-      receivedData = ${pascalCase(message.uid())}Message.Convert.to${pascalCase(message.uid())}(receivedData);
+      receivedData = JSON.parse(receivedData);
+    }`;
+  }
+
+  //Check if we are converting from JSON
+  let convertFromJson;
+  if (isJsonPayload(message.contentType(), defaultContentType)) {
+    convertFromJson = `
+    if(receivedDataHooks.length == 0){
+      receivedData = receivedData;
     }`;
   }
 
   return `
   try {
-    let receivedDataHooks = Hooks.getInstance().getreceivedDataHook();
+    let receivedDataHooks = Hooks.getInstance().getReceivedDataHook();
     for(let hook of receivedDataHooks){
       receivedData = hook(receivedData);
     }
-    ${convertToBinary}
-    ${convertToString}
+    ${convertFromBinary || convertFromString || convertFromJson}
   } catch (e) {
     const error = NatsTypescriptTemplateError.errorForCode(ErrorCode.HOOK_ERROR, e);
     throw error;

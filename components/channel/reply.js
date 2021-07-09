@@ -1,20 +1,28 @@
 import { OnSendingData } from './OnSendingData';
 import { OnReceivingData } from './OnReceivingData';
 import { unwrap } from './ChannelParameterUnwrap';
-import { realizeChannelName, camelCase, includeUnsubAfterForSubscription, messageHasNotNullPayload, getMessageType, realizeParametersForChannelWrapper, includeQueueForSubscription, shouldPromisifyCallbacks } from '../../utils/index';
+import { realizeChannelName, camelCase, includeUnsubAfterForSubscription, messageHasNotNullPayload, getMessageType, realizeParametersForChannelWrapper, includeQueueForSubscription, shouldPromisifyCallbacks, renderJSDocParameters } from '../../utils/index';
+// eslint-disable-next-line no-unused-vars
+import { Message, ChannelParameter } from '@asyncapi/parser';
+
+/**
+ * @typedef TemplateParameters
+ * @type {object}
+ * @property {boolean} generateTestClient - whether or not test client should be generated.
+ * @property {boolean} promisifyReplyCallback - whether or not reply callbacks should be promisify.
+ */
 
 /**
  * Component which returns a function which sets up a reply for a given channel
  * 
- * @param {*} defaultContentType 
- * @param {*} channelName to reply to
- * @param {*} replyMessage which is being send as a reply
- * @param {*} receiveMessage which is being received
- * @param {*} channelParameters parameters to the channel
- * @param {*} params template parameters
+ * @param {string} defaultContentType 
+ * @param {string} channelName to reply to
+ * @param {Message} replyMessage used to reply to request
+ * @param {Message} receiveMessage which is received by the request 
+ * @param {Object.<string, ChannelParameter>} channelParameters parameters to the channel
+ * @param {TemplateParameters} params template parameters
  */
-export function Reply(defaultContentType, channelName, replyMessage, receiveMessage, channelParameters, params) {
-
+export function Reply(defaultContentType, channelName, replyMessage, receiveMessage, channelParameters, params, operation) {
   //Create an array of all the parameter names
   let parameters = [];
   parameters = Object.entries(channelParameters).map(([parameterName, _]) => {
@@ -37,7 +45,7 @@ export function Reply(defaultContentType, channelName, replyMessage, receiveMess
   }
 
   //Determine the reply process based on whether the payload type is null
-  let replyOperation = 'await nc.publish(msg.reply, null);';
+  let replyOperation = 'await client.publish(msg.reply, null);';
   if (messageHasNotNullPayload(replyMessage.payload())) {
     replyOperation = `
     let dataToSend : any = message;
@@ -47,11 +55,20 @@ export function Reply(defaultContentType, channelName, replyMessage, receiveMess
       onReplyError(e)
       return;
     }
-    await nc.publish(msg.reply, dataToSend);
+    await client.publish(msg.reply, dataToSend);
     `;
   }
   
   return `
+  /**
+   * Internal functionality to setup reply to the \`${channelName}\` channel
+   * 
+   * @param onRequest called when request is received
+   * @param onReplyError called when it was not possible to send the reply
+   * @param client to setup reply with
+   ${renderJSDocParameters(channelParameters)}
+   * @param options to subscribe with, bindings from the AsyncAPI document overwrite these if specified
+   */
     export function reply(
       onRequest : (
         err?: NatsTypescriptTemplateError, 
@@ -59,7 +76,7 @@ export function Reply(defaultContentType, channelName, replyMessage, receiveMess
         ${realizeParametersForChannelWrapper(channelParameters, false)}
       ) => ${shouldPromisifyCallbacks(params) ? 'Promise<' : ''}${getMessageType(replyMessage)}${ shouldPromisifyCallbacks(params) ? '>' : ''}, 
       onReplyError: (err: NatsTypescriptTemplateError) => void,
-      nc: Client
+      client: Client
       ${realizeParametersForChannelWrapper(channelParameters)}, 
       options?: SubscriptionOptions
     ): Promise<Subscription> {
@@ -67,10 +84,10 @@ export function Reply(defaultContentType, channelName, replyMessage, receiveMess
       try {
         let subscribeOptions: SubscriptionOptions = {... options};
         
-        ${includeQueueForSubscription(replyMessage)}
-        ${includeUnsubAfterForSubscription(replyMessage)}
+        ${includeQueueForSubscription(operation)}
+        ${includeUnsubAfterForSubscription(operation)}
   
-        let subscription = await nc.subscribe(${realizeChannelName(channelParameters, channelName)}, ${shouldPromisifyCallbacks(params) ? 'async' : ''} (err, msg) => {
+        let subscription = await client.subscribe(${realizeChannelName(channelParameters, channelName)}, ${shouldPromisifyCallbacks(params) ? 'async' : ''} (err, msg) => {
           if (err) {
             onRequest(err);
           } else {
